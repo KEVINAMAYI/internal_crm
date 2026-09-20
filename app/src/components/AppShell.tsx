@@ -1,10 +1,20 @@
-import { Building2, LayoutGrid, Search, ShieldCheck, SquareCheck, Ticket } from 'lucide-react'
+import {
+  Building2,
+  LayoutDashboard,
+  LayoutGrid,
+  Search,
+  Settings as SettingsIcon,
+  SquareCheck,
+  Ticket,
+  Users as UsersIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { CommandPalette } from '@/components/CommandPalette'
 import { UserMenu } from '@/components/UserMenu'
 import { Button } from '@/components/ui/button'
+import { canViewDashboard, isAdmin } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -27,6 +37,22 @@ export function AppShell() {
           <span className="font-semibold">Merchant CRM</span>
         </div>
         <nav className="flex-1 space-y-1 p-2">
+          {canViewDashboard(role) && (
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                )
+              }
+            >
+              <LayoutDashboard className="size-4" />
+              Dashboard
+            </NavLink>
+          )}
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -44,7 +70,7 @@ export function AppShell() {
               {item.label}
             </NavLink>
           ))}
-          {role === 'admin' && (
+          {isAdmin(role) && (
             <NavLink
               to="/admin/users"
               className={({ isActive }) =>
@@ -56,8 +82,24 @@ export function AppShell() {
                 )
               }
             >
-              <ShieldCheck className="size-4" />
-              Admin
+              <UsersIcon className="size-4" />
+              Users
+            </NavLink>
+          )}
+          {isAdmin(role) && (
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                )
+              }
+            >
+              <SettingsIcon className="size-4" />
+              Settings
             </NavLink>
           )}
         </nav>

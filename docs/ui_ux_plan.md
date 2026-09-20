@@ -12,8 +12,11 @@ convenience layer (disable/hide controls, better error messages) — never the s
   transactions, tickets, activity, tasks) hangs off of. Even standalone tasks and the global ticket
   queue are just filtered views that link back to a merchant.
 - **Primary navigation: persistent left sidebar (module nav) + a secondary master-detail pane for
-  the Merchants module.** Sidebar = app-level sections (Merchants, Tickets, Tasks, Admin). Within
-  Merchants, a list/detail split view is the workhorse screen where reps live all day.
+  the Merchants module.** Sidebar = app-level sections (Dashboard, Merchants, Tickets, Tasks,
+  Users, Settings — Dashboard/Users/Settings hidden entirely for roles that can't use them, see
+  §5). Within Merchants, a list/detail split view is the workhorse screen where reps live all day.
+  Landing route is role-based: **Dashboard** for Admin/Ops (org-wide overview, their day starts
+  there), **Merchants** for Sales/Support (unchanged).
 - **Tabs for entity depth, not breadth.** Merchant Detail uses a tab strip (Activity, Contacts,
   Tickets, Transactions, Tasks) instead of separate routes/pages, so context (header KPIs, status)
   never disappears while switching sub-views. Deep-linkable via `?tab=`.
@@ -30,8 +33,9 @@ convenience layer (disable/hide controls, better error messages) — never the s
 
 | Screen | Purpose |
 |---|---|
-| **Login** | Supabase Auth email/password (or magic link) sign-in; redirects to last route or Merchants list. |
+| **Login** | Supabase Auth email/password (or magic link) sign-in; redirects to last route, or role-based landing (**Dashboard** for Admin/Ops, **Merchants** for Sales/Support) if there's no prior route. |
 | **App Shell** | Sidebar + topbar wrapper around all authenticated routes; holds global search, user menu, role badge. |
+| **Dashboard** *(new)* | Org-wide ops overview: KPI tiles (total/active merchants, open tickets by priority, overdue tasks) + a cross-merchant recent-activity feed. Landing page for Admin/Ops only; not shown in nav for Sales/Support. |
 | **Merchants List + Detail (split view)** | Primary workspace: searchable/filterable merchant list on the left, selected merchant's full detail (header + tabs) on the right. |
 | — Merchant Detail: Overview/Header | Identity, status, MCC, owner, 30-day volume KPI, quick actions — always visible above tabs. |
 | — Merchant Detail: Activity tab | Chronological note/call/email/meeting/system feed; log-activity composer. |
@@ -42,7 +46,8 @@ convenience layer (disable/hide controls, better error messages) — never the s
 | **New Merchant (Dialog/Sheet)** | Create-merchant form (Sales/Ops/Admin only), opened from list toolbar. |
 | **Tickets (Global Queue)** | Cross-merchant ticket list for Support/Ops triage — "My Tickets", "Unassigned", filters by status/priority; row click deep-links into merchant detail's Tickets tab. |
 | **Tasks (My Work / Team)** | Standalone task home: "My Tasks", "Assigned by Me", "Team", "Unlinked"; kanban or list view; create/edit task, optionally link to a merchant. |
-| **Admin: Users** | Manage Profiles — list users, role, is_active toggle (Admin only). |
+| **Users** *(renamed from "Admin: Users")* | Manage Profiles — list users, role, is_active toggle (Admin only). Functionality unchanged; sidebar label and screen name simplified from "Admin" to "Users" since it's the only screen in that module — cosmetic only, see §3. |
+| **Settings (Admin)** *(new)* | Org-level system configuration — ticket priority/SLA defaults, notification defaults (Admin only). Distinct from **Profile / Settings** below, which is unchanged and remains personal/per-user. |
 | **Profile / Settings** | Current user's own profile view, theme/density prefs, sign out. |
 | **403 / No Access** | Shown when RLS rejects an action or route despite UI gating (defense-in-depth). |
 | **Not Found (404)** | Bad merchant id / route. |
@@ -54,7 +59,13 @@ convenience layer (disable/hide controls, better error messages) — never the s
 ```
 [App Shell: Sidebar (module nav) + Topbar (search, user menu)]
 │
-├─ [Merchants]  (default landing)
+├─ [Dashboard]  (Admin/Ops only, hidden entirely for Sales/Support — default landing for Admin/Ops)
+│    └─ KPI tiles (total/active merchants, open tickets by priority, overdue tasks)
+│         + org-wide recent Activity feed (all merchants, newest first)
+│         KPI tile click     ──▶ scoped [Merchants] / [Tickets] / [Tasks] view
+│         activity row click ──▶ [Merchant Detail → Activity tab]
+│
+├─ [Merchants]  (default landing for Sales/Support)
 │    └─ Split view: [Merchant List] ── select row ──▶ [Merchant Detail]
 │         Merchant Detail tabs:
 │         ├─ Activity  (feed + composer)
@@ -73,11 +84,15 @@ convenience layer (disable/hide controls, better error messages) — never the s
 │         task click ──▶ Task Detail Sheet (edit inline)
 │         merchant-linked task ──▶ link out to [Merchant Detail]
 │
-├─ [Admin]  (Admin role only, hidden otherwise)
+├─ [Users]  (Admin role only, hidden otherwise — renamed from "Admin"; same screen/functionality)
 │    └─ Users table → row ──▶ Edit-role / active-toggle Dialog
 │
+├─ [Settings]  (Admin role only, hidden otherwise — new, org-level config)
+│    └─ Ticket Priority & SLA Defaults  (Card: editable table + Save/Reset)
+│         Notification Defaults          (Card: placeholder switches + Save/Reset)
+│
 └─ [Profile menu ▾] (topbar, all roles)
-     ├─ My Profile
+     ├─ My Profile / Settings  (personal — theme/density prefs; unchanged)
      └─ Sign out
 
 Global: [⌘K Command Palette] — search merchants/tickets/tasks from anywhere
@@ -179,6 +194,91 @@ Global: [⌘K Command Palette] — search merchants/tickets/tasks from anywhere
 - Board view = shadcn-style kanban using `Card` columns per status (todo/in_progress/done/cancelled)
   with drag-and-drop (optional v2; list view is MVP).
 
+### 4.5 Dashboard (Admin/Ops landing page, org-wide overview)
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│ ☰  CRM     [⌘K  Search merchants, tickets, tasks...]         Jane Ops ▾  (role: ops)        │
+├───────────────────────────────────────────────────────────────────────────────────────────┤
+│ DASHBOARD                                                    🟢 live   Refreshed: just now  │
+│ ┌──────────────┬──────────────┬───────────────────────────────┬──────────────────────────┐ │
+│ │ TOTAL         │ ACTIVE        │ OPEN TICKETS              18   │ OVERDUE TASKS         12  │ │
+│ │ MERCHANTS     │ MERCHANTS     │ 🔴 urgent 4   🟠 high 6         │                            │ │
+│ │   240         │   176         │ 🟡 normal 5   ⚪ low 3           │                            │ │
+│ │ view→[Merchants]│view→[Merchants│ view→[Tickets]                 │ view→[Tasks]               │ │
+│ │                │  status=active]│                                │                            │ │
+│ └──────────────┴──────────────┴───────────────────────────────┴──────────────────────────┘ │
+│ ───────────────────────────────────────────────────────────────────────────────────────── │
+│ RECENT ACTIVITY (org-wide, newest first)                              Filter: [All types ▾] │
+│ ┌───────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ 2m ago    💬 Note    Acme Payments   Jane Ops      "Confirmed onboarding docs..."       │ │
+│ │ 14m ago   ☎️ Call    Beta Corp       Sam Sales     "Discussed volume ramp..."           │ │
+│ │ 1h ago    ⚙️ System  Chroma LLC      —             status changed active → suspended    │ │
+│ │ 3h ago    💬 Note    Delta Retail    Priya Support "Escalating chargeback with risk..." │ │
+│ │ …                                                                                        │ │
+│ └───────────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                       [Load more ▾]          │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+- KPI row = four shadcn `Card` tiles in a `grid` (not a whitespace-heavy hero layout — tight
+  padding, label/value/breakdown/link stacked densely per this app's information-density
+  convention). Each tile's footer is a text link ("view→") that deep-links into the scoped
+  Merchants/Tickets/Tasks list (e.g. Overdue Tasks → `/tasks?view=team&status=overdue`).
+- Open Tickets tile shows a compact priority breakdown (counts, not a chart) inline in the tile —
+  no separate chart component needed at this density.
+- Recent Activity feed reuses the same row shape as the Merchant Detail Activity tab (§4.1) plus a
+  merchant-name column, since it's the same underlying `activities` data queried org-wide instead
+  of scoped to one `merchant_id`; same type filter, same "Load more" pagination, same realtime
+  merge behavior (see §5).
+- Expected to be backed by a single aggregation call (e.g. `supabase.rpc('dashboard_summary')`)
+  for the KPI counts, following the existing `merchant_summary` RPC pattern in
+  `TECHNICAL_IMPLEMENTATION.md` §4.3, rather than computing counts client-side from full table
+  scans — exact function/shape to be confirmed with backend, not prescribed here.
+- Not shown in the sidebar or reachable by direct nav for Sales/Support — this is an org-overview,
+  not a personal one, and those roles land on Merchants instead (see §3).
+
+### 4.6 Settings (Admin-only, org-level configuration)
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│ ☰  CRM     [⌘K  Search merchants, tickets, tasks...]         Ada Admin ▾  (role: admin)     │
+├───────────────────────────────────────────────────────────────────────────────────────────┤
+│ SETTINGS                                                                                     │
+│ ┌─ Ticket Priority & SLA Defaults ───────────────────────────────────────────────────────┐ │
+│ │ Default priority for new tickets:  [normal ▾]                                           │ │
+│ │ ┌──────────────────────────────────────────────────────────────────────────────────┐   │ │
+│ │ │ Priority     SLA breach threshold (hours)         Enabled                         │   │ │
+│ │ │ urgent       [   4 ]                              [x]                             │   │ │
+│ │ │ high         [  24 ]                              [x]                             │   │ │
+│ │ │ normal       [  72 ]                              [x]                             │   │ │
+│ │ │ low          [ 168 ]                              [x]                             │   │ │
+│ │ └──────────────────────────────────────────────────────────────────────────────────┘   │ │
+│ │ Unsaved changes                                          [Reset]  [Save Ticket Defaults] │ │
+│ └───────────────────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─ Notification Defaults  (placeholder — no notification system built yet) ──────────────┐ │
+│ │ Email me when a ticket is assigned to me       ○──  off   🔒 coming soon                │ │
+│ │ Email me when a task I own becomes overdue     ○──  off   🔒 coming soon                │ │
+│ │ Daily digest of open tickets                   ○──  off   🔒 coming soon                │ │
+│ │                                                            [Reset]  [Save Notification    │ │
+│ │                                                                       Defaults]           │ │
+│ └───────────────────────────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+- Each config domain is its own `Card` (`Ticket Priority & SLA Defaults`, `Notification
+  Defaults`) with its **own independent Save/Reset**, not one page-wide submit — see §5 for why.
+- Ticket SLA table is a small fixed-row (4 priorities) editable `Table`: numeric `Input` for the
+  breach-threshold hours, `Switch` for enabled/disabled, plus a top-level `Select` for the
+  org-wide default priority assigned to new tickets. Maps to whatever `ticket_priority`-keyed
+  config table/row the backend defines — this screen assumes one row per `ticket_priority` enum
+  value, consistent with the enum already defined in `TECHNICAL_IMPLEMENTATION.md` §2.1.
+- Notification Defaults renders as real `Switch` rows so the surface exists and is discoverable,
+  but every switch is disabled with a `Tooltip`: "Not available yet" and a `Badge` ("coming soon")
+  next to the section title — this is a placeholder surface per the brief, not a working feature;
+  it must not silently no-op if someone finds a way to toggle it.
+- Page is reachable only via the `Settings` sidebar item, itself hidden for every non-admin role
+  (see §3, §5) — there is no partial/disabled view for other roles, matching the same
+  role-impossible-by-design hide rule already used for `Users`.
+
 ---
 
 ## 5. Interaction & States
@@ -192,6 +292,18 @@ Global: [⌘K Command Palette] — search merchants/tickets/tasks from anywhere
 - Error states: inline `Alert` (destructive) within the tab/list region, not a full-page crash;
   react-query retry button. RLS-denied writes surface as toast: "You don't have permission to do
   that" rather than a generic 500.
+- **Dashboard KPI tiles:** each tile shows its own `Skeleton` (label + large-number placeholder)
+  independently while `dashboard_summary` loads, so tiles that resolve first render immediately
+  rather than blocking on the slowest count; a tile-level fetch failure renders a compact inline
+  `Alert` ("Couldn't load" + retry icon-button) inside just that tile, not the whole dashboard.
+- **Dashboard activity feed:** skeleton rows on first load, identical pattern to the Merchant
+  Detail Activity tab; empty state ("No activity yet") is unlikely in practice but handled the
+  same way; error state is an inline `Alert` + retry within the feed `Card`, independent of the
+  KPI row above it (partial-failure tolerant — KPIs and feed are separate queries).
+- **Settings:** on load, each Card shows a `Skeleton` form (label rows + input placeholders) until
+  current config resolves; if the config fetch fails, the Card shows a destructive `Alert` +
+  retry and its Save button is disabled until data loads successfully (never let an admin "save"
+  on top of an unknown/failed-to-load base state).
 
 **Permission-gated controls (UI convenience layer only — RLS enforces for real)**
 
@@ -206,7 +318,9 @@ Global: [⌘K Command Palette] — search merchants/tickets/tasks from anywhere
 | Log activity/note | ✅ (own-authored edits only) | ✅ | ✅ | ✅ |
 | Edit others' activity notes | ❌ (disabled) | ❌ | ❌ | ❌ (author-only everywhere) |
 | Create/edit tasks | own/assigned | ✅ | ✅ | ✅ |
-| Admin: Users screen | hidden from nav | hidden | hidden | ✅ |
+| Users screen *(renamed from "Admin: Users")* | hidden from nav | hidden | hidden | ✅ |
+| Dashboard (nav item + landing route) | hidden from nav | hidden | ✅ (default landing) | ✅ (default landing) |
+| Settings screen (nav item + route) | hidden from nav | hidden | hidden | ✅ |
 
 - Disabled controls still render (greyed `Button`/`Select` with a `Tooltip`: "You don't have
   permission to edit this") rather than disappearing, *except* where the action is structurally
@@ -236,6 +350,17 @@ Global: [⌘K Command Palette] — search merchants/tickets/tasks from anywhere
   multi-field drift and gives room for validation messaging.
 - Activity notes → inline composer (`Textarea` + type `Select` + submit) pinned above the feed,
   not a modal — this is a high-frequency action and should have zero navigation friction.
+- **Settings page (org config) → per-section save, not per-field inline-edit and not one
+  page-wide submit.** Rationale: unlike ticket/task status edits, these are low-frequency,
+  multi-field, and mutually-related-within-a-section values (e.g. an SLA-hour change is only
+  meaningful reviewed alongside the other three priorities' thresholds at once) — per-field
+  optimistic auto-save risks admins saving a half-edited, inconsistent SLA table one field at a
+  time. A single whole-page submit is too coarse the other direction: it would force saving
+  unrelated Notification Defaults changes together with Ticket SLA changes. Each `Card` (Ticket
+  Priority & SLA Defaults; Notification Defaults) therefore has its own **Save / Reset** pair,
+  dirty-state tracked per section (`Unsaved changes` label appears only on a touched section),
+  and its own success/error toast — a failed SLA save doesn't roll back or block the Notification
+  section, and vice versa.
 
 **Bulk actions**
 - Merchant list, Tickets queue, Tasks list support row `Checkbox` selection → contextual toolbar

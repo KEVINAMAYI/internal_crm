@@ -242,6 +242,71 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          default_ticket_priority: Database["public"]["Enums"]["ticket_priority"]
+          id: number
+          notify_channel: string
+          notify_new_ticket_enabled: boolean
+          notify_task_due_soon_enabled: boolean
+          notify_ticket_sla_breach_enabled: boolean
+          sla_high_enabled: boolean
+          sla_high_hours: number
+          sla_low_enabled: boolean
+          sla_low_hours: number
+          sla_normal_enabled: boolean
+          sla_normal_hours: number
+          sla_urgent_enabled: boolean
+          sla_urgent_hours: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_ticket_priority?: Database["public"]["Enums"]["ticket_priority"]
+          id?: number
+          notify_channel?: string
+          notify_new_ticket_enabled?: boolean
+          notify_task_due_soon_enabled?: boolean
+          notify_ticket_sla_breach_enabled?: boolean
+          sla_high_enabled?: boolean
+          sla_high_hours?: number
+          sla_low_enabled?: boolean
+          sla_low_hours?: number
+          sla_normal_enabled?: boolean
+          sla_normal_hours?: number
+          sla_urgent_enabled?: boolean
+          sla_urgent_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_ticket_priority?: Database["public"]["Enums"]["ticket_priority"]
+          id?: number
+          notify_channel?: string
+          notify_new_ticket_enabled?: boolean
+          notify_task_due_soon_enabled?: boolean
+          notify_ticket_sla_breach_enabled?: boolean
+          sla_high_enabled?: boolean
+          sla_high_hours?: number
+          sla_low_enabled?: boolean
+          sla_low_hours?: number
+          sla_normal_enabled?: boolean
+          sla_normal_hours?: number
+          sla_urgent_enabled?: boolean
+          sla_urgent_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee_id: string | null
@@ -350,6 +415,19 @@ export type Database = {
     }
     Functions: {
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      dashboard_summary: {
+        Args: never
+        Returns: {
+          active_merchant_count: number
+          merchant_count: number
+          open_ticket_count: number
+          open_tickets_high: number
+          open_tickets_low: number
+          open_tickets_normal: number
+          open_tickets_urgent: number
+          overdue_task_count: number
+        }[]
+      }
       merchant_summary: {
         Args: { p_merchant_id: string }
         Returns: {

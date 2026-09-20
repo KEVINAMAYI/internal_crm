@@ -25,6 +25,7 @@ const CHAIN_METHODS = [
   'ilike',
   'is',
   'in',
+  'not',
   'contains',
   'or',
   'order',
@@ -132,7 +133,9 @@ export function createSupabaseMock(): MockSupabaseClient {
   const client = {} as MockSupabaseClient
 
   client.from = vi.fn((table: string) => createQueryBuilder(tableResults.get(table) ?? defaultResult))
-  client.rpc = vi.fn(() => Promise.resolve(rpcResult))
+  // Returns a chainable/thenable query builder (like the real PostgrestFilterBuilder) so both
+  // `await supabase.rpc(...)` and `await supabase.rpc(...).single()` resolve to the configured result.
+  client.rpc = vi.fn(() => createQueryBuilder(rpcResult))
   client.channel = vi.fn(() => {
     lastChannel = createMockChannel()
     client.__lastChannel = lastChannel

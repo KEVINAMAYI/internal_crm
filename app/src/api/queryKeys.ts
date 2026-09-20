@@ -29,4 +29,11 @@ export const queryKeys = {
   search: {
     global: (q: string) => ['search', 'global', q] as const,
   },
+  dashboard: {
+    summary: () => ['dashboard', 'summary'] as const,
+    recentActivity: (limit: number) => ['dashboard', 'recent-activity', limit] as const,
+  },
+  settings: {
+    system: () => ['settings', 'system'] as const,
+  },
 } as const

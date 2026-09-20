@@ -31,6 +31,10 @@ export const canWriteTask = (
 
 export const isAdmin = (role: UserRole) => role === 'admin'
 
+export const canViewDashboard = (role: UserRole) => role === 'ops' || role === 'admin'
+
+export const landingRoute = (role: UserRole) => (canViewDashboard(role) ? '/dashboard' : '/merchants')
+
 export const roleLabel: Record<UserRole, string> = {
   sales: 'Sales',
   support: 'Support',

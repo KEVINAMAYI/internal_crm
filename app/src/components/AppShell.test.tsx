@@ -47,18 +47,54 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: /Tasks/ })).toBeInTheDocument()
   })
 
-  it('hides the Admin nav item for non-admin roles', () => {
+  it('hides the Users nav item for non-admin roles', () => {
     mockUseAuth.mockReturnValue(buildAuthValue({ role: 'sales' }))
     renderShell()
 
-    expect(screen.queryByRole('link', { name: /Admin/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Users/ })).not.toBeInTheDocument()
   })
 
-  it('shows the Admin nav item for the admin role', () => {
+  it('shows the Users nav item for the admin role', () => {
     mockUseAuth.mockReturnValue(buildAuthValue({ role: 'admin' }))
     renderShell()
 
-    expect(screen.getByRole('link', { name: /Admin/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Users/ })).toBeInTheDocument()
+  })
+
+  it('hides Dashboard, Users, and Settings for sales', () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'sales' }))
+    renderShell()
+
+    expect(screen.queryByRole('link', { name: /Dashboard/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Users/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument()
+  })
+
+  it('hides Dashboard, Users, and Settings for support', () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'support' }))
+    renderShell()
+
+    expect(screen.queryByRole('link', { name: /Dashboard/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Users/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument()
+  })
+
+  it('shows only Dashboard (not Users/Settings) for ops', () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'ops' }))
+    renderShell()
+
+    expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Users/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument()
+  })
+
+  it('shows Dashboard, Users, and Settings for admin', () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'admin' }))
+    renderShell()
+
+    expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Users/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Settings/ })).toBeInTheDocument()
   })
 
   it('renders the routed page content via the Outlet', () => {

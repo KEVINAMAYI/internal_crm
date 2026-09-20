@@ -55,6 +55,30 @@ describe('listTasks', () => {
     expect(builder._calls.filter((c) => c.method === 'eq' || c.method === 'is')).toHaveLength(0)
   })
 
+  it('uses .lt(due_date)/.not(status,in,...) instead of a literal status match when overdueOnly is set', async () => {
+    mockSupabase.__setTableResult('tasks', { data: [], error: null })
+    const builder = mockSupabase.from('tasks')
+    mockSupabase.from.mockReturnValueOnce(builder)
+
+    await listTasks({ view: 'team', userId: 'user-1', overdueOnly: true })
+
+    const ltCall = builder._calls.find((c) => c.method === 'lt')
+    expect(ltCall?.args[0]).toBe('due_date')
+    expect(builder._calls).toContainEqual({ method: 'not', args: ['status', 'in', '(done,cancelled)'] })
+    expect(builder._calls.some((c) => c.method === 'eq' && c.args[0] === 'status')).toBe(false)
+  })
+
+  it('ignores a status filter when overdueOnly is also set (overdueOnly takes precedence)', async () => {
+    mockSupabase.__setTableResult('tasks', { data: [], error: null })
+    const builder = mockSupabase.from('tasks')
+    mockSupabase.from.mockReturnValueOnce(builder)
+
+    await listTasks({ view: 'team', userId: 'user-1', overdueOnly: true, status: 'done' })
+
+    expect(builder._calls.some((c) => c.method === 'eq' && c.args[0] === 'status')).toBe(false)
+    expect(builder._calls.some((c) => c.method === 'not')).toBe(true)
+  })
+
   it('applies optional status and merchantId filters', async () => {
     mockSupabase.__setTableResult('tasks', { data: [], error: null })
     const builder = mockSupabase.from('tasks')

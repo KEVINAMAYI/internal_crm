@@ -29,7 +29,7 @@ export function MerchantList({ selectedId }: { selectedId?: string }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [q, setQ] = useState('')
-  const [status, setStatus] = useState<string>('')
+  const [status, setStatus] = useState<string>(() => searchParams.get('status') ?? '')
   const [page, setPage] = useState(0)
   const [newMerchantOpen, setNewMerchantOpen] = useState(false)
   const debouncedQ = useDebouncedValue(q, 300)

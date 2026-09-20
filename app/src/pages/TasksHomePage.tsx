@@ -41,7 +41,12 @@ export default function TasksHomePage() {
   const [editing, setEditing] = useState<TaskRow | null>(null)
   const [newOpen, setNewOpen] = useState(false)
 
-  const filters = { view, userId: user?.id ?? '', status: (status || undefined) as TaskStatus | undefined }
+  const filters = {
+    view,
+    userId: user?.id ?? '',
+    status: (status && status !== 'overdue' ? status : undefined) as TaskStatus | undefined,
+    overdueOnly: status === 'overdue',
+  }
   const listKey = queryKeys.tasks.list(filters)
   const { data: tasks, isLoading } = useQuery({
     queryKey: listKey,
@@ -110,6 +115,7 @@ export default function TasksHomePage() {
                 {s.replace('_', ' ')}
               </SelectItem>
             ))}
+            <SelectItem value="overdue">Overdue</SelectItem>
           </SelectContent>
         </Select>
       </div>

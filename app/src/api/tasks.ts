@@ -16,10 +16,11 @@ export type TaskListFilters = {
   userId: string
   status?: TaskStatus
   merchantId?: string
+  overdueOnly?: boolean
 }
 
 export async function listTasks(filters: TaskListFilters) {
-  const { view, userId, status, merchantId } = filters
+  const { view, userId, status, merchantId, overdueOnly } = filters
   let query = supabase
     .from('tasks')
     .select(TASK_SELECT)
@@ -30,7 +31,11 @@ export async function listTasks(filters: TaskListFilters) {
   if (view === 'assignedByMe') query = query.eq('created_by', userId)
   if (view === 'unlinked') query = query.is('merchant_id', null)
 
-  if (status) query = query.eq('status', status)
+  if (overdueOnly) {
+    query = query.lt('due_date', new Date().toISOString().slice(0, 10)).not('status', 'in', '(done,cancelled)')
+  } else if (status) {
+    query = query.eq('status', status)
+  }
   if (merchantId) query = query.eq('merchant_id', merchantId)
 
   const { data, error } = await query

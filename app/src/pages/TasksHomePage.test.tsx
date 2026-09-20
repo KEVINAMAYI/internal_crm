@@ -122,6 +122,41 @@ describe('TasksHomePage', () => {
     )
   })
 
+  it('treats ?status=overdue as the overdueOnly pseudo-filter, not a literal status value', async () => {
+    mockListTasks.mockResolvedValue([])
+    renderPage('/tasks?status=overdue')
+
+    await screen.findByText('No tasks here.')
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ overdueOnly: true, status: undefined }),
+    )
+  })
+
+  it('passes a real TaskStatus value through as status (not overdueOnly) for non-overdue selections', async () => {
+    mockListTasks.mockResolvedValue([])
+    renderPage('/tasks?status=done')
+
+    await screen.findByText('No tasks here.')
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ overdueOnly: false, status: 'done' }),
+    )
+  })
+
+  it('offers "Overdue" as a status filter option distinct from the real TaskStatus enum', async () => {
+    mockListTasks.mockResolvedValue([])
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('No tasks here.')
+    const trigger = screen.getByRole('combobox')
+    trigger.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByRole('option', { name: 'Overdue' })).toBeInTheDocument()
+  })
+
   it('opens the edit sheet for a writable task via the row menu', async () => {
     const task = buildTask({ id: 'task-1', title: 'Edit me', created_by: 'user-1', assignee_id: 'user-1' })
     mockListTasks.mockResolvedValue([{ ...task, assignee: null, merchant: null }])

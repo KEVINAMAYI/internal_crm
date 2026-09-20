@@ -26,11 +26,11 @@ const mockUseAuth = vi.mocked(useAuth)
 const mockListMerchants = vi.mocked(listMerchants)
 const mockListProfiles = vi.mocked(listProfiles)
 
-function renderList(selectedId?: string) {
+function renderList(selectedId?: string, initialEntry = '/merchants') {
   const queryClient = createTestQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <MerchantList selectedId={selectedId} />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -105,6 +105,29 @@ describe('MerchantList', () => {
     renderList()
 
     expect(screen.queryByRole('button', { name: /New/ })).not.toBeInTheDocument()
+  })
+
+  it('seeds the status filter from the ?status= URL search param', async () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'sales' }))
+    mockListMerchants.mockResolvedValue({ data: [], count: 0 })
+
+    renderList(undefined, '/merchants?status=active')
+
+    await waitFor(() =>
+      expect(mockListMerchants).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' })),
+    )
+    expect(await screen.findByText('active')).toBeInTheDocument()
+  })
+
+  it('defaults the status filter to unset when there is no ?status= param', async () => {
+    mockUseAuth.mockReturnValue(buildAuthValue({ role: 'sales' }))
+    mockListMerchants.mockResolvedValue({ data: [], count: 0 })
+
+    renderList(undefined, '/merchants')
+
+    await waitFor(() =>
+      expect(mockListMerchants).toHaveBeenCalledWith(expect.objectContaining({ status: undefined })),
+    )
   })
 
   it('debounces the search input before triggering a new query', async () => {
